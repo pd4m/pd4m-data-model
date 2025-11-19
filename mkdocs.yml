@@ -1,0 +1,45 @@
+# mkdocs.yml
+
+# --- Project Information ---
+site_name: PD4M data model Documentation
+  #site_url: https://example.com/ # Optional: the URL where the site will be hosted
+site_description: Documentation for PD4M LinkML schema.
+site_author: Gustav R. Jansen
+
+# --- Documentation Source ---
+# By default, mkdocs looks for markdown files in a 'docs' directory.
+# This aligns with where 'linkml generate doc -d docs' saves files.
+docs_dir: docs
+
+# --- Theme Configuration ---
+# 'readthedocs' is a classic theme; 'material' (needs 'pip install mkdocs-material') is modern.
+theme:
+  name: readthedocs
+  # You can add options here, e.g.:
+  # highlightjs: true
+
+# --- Navigation Setup ---
+# This defines the structure of your sidebar navigation.
+# You will need to customize this based on the files linkml generate doc creates.
+
+nav:
+  - Home: index.md
+  - Classes: classes.md
+  - Slots: slots.md
+  - Types: types.md
+  # If you have specific modules or pages, add them like this:
+  # - My Module:
+  #   - Module Intro: my_module/index.md
+  #   - Class A: my_module/class_a.md
+
+# --- Plugins and Extensions ---
+# LinkML documentation often uses specific markdown extensions for tables and admonitions.
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition # For callout boxes (notes, warnings)
+  - attr_list # For adding attributes to markdown elements
+

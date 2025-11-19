@@ -7,7 +7,6 @@ description: >
 prefixes:
   linkml: https://w3id.org/linkml/
   ex: https://example.org/
-  pd4m: https://pd4m.ornl.gov/model
 default_prefix: ex
 default_range: string
 
@@ -130,10 +129,6 @@ classes:
   ScalarWithUnit:
     description: Simple scalar quantity with a unit and optional description.
     attributes:
-      name:
-        range: string
-        required: false
-        description: Optional key/name for use in maps.
       value:
         range: float
         required: true
@@ -144,13 +139,12 @@ classes:
         range: string
         required: false
 
-  MethodParameter:
-    description: Generic method/config parameter.
+  MethodParameterEntry:
+    description: One method/config parameter (name + value [+ unit/description]).
     attributes:
       name:
         range: string
-        required: false
-        description: Parameter name (used as key in maps).
+        required: true
       value:
         required: true
         any_of:
@@ -167,29 +161,36 @@ classes:
 
   MethodConfig:
     description: >
-      Extensible method- and code-specific configuration parameters.
-      Keys are parameter names; values are MethodParameter instances.
+      Extensible method- and code-specific configuration as a list of parameter entries.
     attributes:
-      params:
-        range: MethodParameter
+      parameters:
+        range: MethodParameterEntry
         multivalued: true
         inlined: true
-        inlined_as_list: false
-        key_name: name
-        description: Map from parameter name to parameter details.
+        required: false
+
+  MethodObservableEntry:
+    description: >
+      One method- or code-specific observable or intermediate quantity,
+      identified by name.
+    attributes:
+      name:
+        range: string
+        required: true
+      value:
+        range: ScalarWithUnit
+        required: true
+        inlined: true
 
   MethodObservables:
     description: >
-      Map of method- or code-specific observables and intermediate quantities.
-      Keys are observable names (e.g. "ccsd_energy"); values are ScalarWithUnit.
+      List of method- or code-specific observables and intermediate quantities.
     attributes:
-      observables:
-        range: ScalarWithUnit
+      entries:
+        range: MethodObservableEntry
         multivalued: true
         inlined: true
-        inlined_as_list: false
-        key_name: name
-        description: Map from observable name to scalar value.
+        required: false
 
   InteractionEvolution:
     description: >
@@ -225,12 +226,12 @@ classes:
         required: false
 
   InteractionRef:
-    description: Reference to an interaction by name and optional ID.
+    description: Reference to an interaction by label and optional ID.
     attributes:
       interaction_id:
         range: uuid
         required: false
-      interaction_name:
+      interaction_label:
         range: string
         required: true
 
@@ -241,6 +242,18 @@ classes:
     attributes:
       kind:
         range: BulkObservableEnum
+        required: true
+      value:
+        range: ScalarWithUnit
+        required: true
+        inlined: true
+
+  OtherBulkObservableEntry:
+    description: >
+      One non-standard or user-defined nucleus-level observable.
+    attributes:
+      name:
+        range: string
         required: true
       value:
         range: ScalarWithUnit
@@ -260,6 +273,28 @@ classes:
         required: true
         inlined: true
 
+  OtherTransitionObservableEntry:
+    description: >
+      One non-standard or user-defined transition-level observable.
+    attributes:
+      name:
+        range: string
+        required: true
+      value:
+        range: ScalarWithUnit
+        required: true
+        inlined: true
+
+  MetadataEntry:
+    description: Simple key/value pair for generic metadata.
+    attributes:
+      key:
+        range: string
+        required: true
+      value:
+        range: string
+        required: true
+
 ########################################
 # Main domain classes
 ########################################
@@ -268,16 +303,16 @@ classes:
     description: >
       Catalog entry describing a Hamiltonian / interaction (base interaction,
       χEFT family, evolution, three-body truncation, etc.). May be created
-      before or after runs that reference its name.
+      before or after runs that reference its label.
     attributes:
       id:
         identifier: true
         range: uuid
         required: true
-      name:
+      label:
         range: string
         required: true
-        description: Stable, human-readable name (e.g. "EMN_1.8_2.0_lambda2.0").
+        description: Stable, human-readable label (e.g. "EMN_1.8_2.0_lambda2.0").
       theory_family:
         range: string
         required: false
@@ -309,7 +344,7 @@ classes:
         range: InteractionStatusEnum
         required: false
         description: Status of this interaction record.
-      method_defaults_basis:
+      default_basis:
         range: Basis
         required: false
         inlined: true
@@ -346,13 +381,10 @@ classes:
         range: datetime
         required: true
       metadata:
-        range: string
-        required: false
+        range: MetadataEntry
         multivalued: true
         inlined: true
-        inlined_as_list: false
-        key_name: key
-        description: Arbitrary additional metadata (key-value map).
+        required: false
 
   CalculationRun:
     description: >
@@ -413,21 +445,12 @@ classes:
         range: StandardBulkObservable
         multivalued: true
         inlined: true
-        inlined_as_list: true
         required: false
-        description: >
-          List of standard nucleus-level observables (binding_energy, radii,
-          separation energies, etc.) with values and units.
       other_bulk_observables:
-        range: ScalarWithUnit
+        range: OtherBulkObservableEntry
         multivalued: true
         inlined: true
-        inlined_as_list: false
-        key_name: name
         required: false
-        description: >
-          Map of non-standard or user-defined nucleus-level observables
-          keyed by a freeform name.
       method_observables:
         range: MethodObservables
         required: false
@@ -476,7 +499,7 @@ classes:
         required: true
         inlined: false
         description: Reference to the parent nucleus.
-      index:
+      state_index:
         range: integer
         required: true
         description: Integer index used in the code for this state.
@@ -539,21 +562,12 @@ classes:
         range: StandardTransitionObservable
         multivalued: true
         inlined: true
-        inlined_as_list: true
         required: false
-        description: >
-          List of standard transition-level observables (B_value, lifetime, etc.)
-          whose names are drawn from TransitionObservableEnum.
       other_transition_observables:
-        range: ScalarWithUnit
+        range: OtherTransitionObservableEntry
         multivalued: true
         inlined: true
-        inlined_as_list: false
-        key_name: name
         required: false
-        description: >
-          Map of non-standard or user-defined transition observables keyed by
-          a freeform name.
 
       method_observables:
         range: MethodObservables
@@ -595,13 +609,10 @@ classes:
         range: string
         required: true
       metadata:
-        range: string
-        required: false
+        range: MetadataEntry
         multivalued: true
         inlined: true
-        inlined_as_list: false
-        key_name: key
-        description: Additional metadata (e.g., GPU index).
+        required: false
 
 ########################################
 # Optional top-level container
@@ -616,42 +627,34 @@ classes:
         range: Interaction
         multivalued: true
         inlined: true
-        inlined_as_list: true
         required: false
       job_executions:
         range: JobExecution
         multivalued: true
         inlined: true
-        inlined_as_list: true
         required: false
       runs:
         range: CalculationRun
         multivalued: true
         inlined: true
-        inlined_as_list: true
         required: false
       nuclei:
         range: Nucleus
         multivalued: true
         inlined: true
-        inlined_as_list: true
         required: false
       states:
         range: State
         multivalued: true
         inlined: true
-        inlined_as_list: true
         required: false
       transitions:
         range: Transition
         multivalued: true
         inlined: true
-        inlined_as_list: true
         required: false
       telemetry_samples:
         range: TelemetrySample
         multivalued: true
         inlined: true
-        inlined_as_list: true
         required: false
-
