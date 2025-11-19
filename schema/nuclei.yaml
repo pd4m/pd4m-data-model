@@ -95,7 +95,7 @@ enums:
       B_value:
         description: Reduced transition probability B(EL) or B(ML).
       reduced_matrix_element:
-        description: Reduced matrix element (e.g. |<Jf||O_L||Ji>|).
+        description: Reduced matrix element (e.g. `|<Jf||O_L||Ji>|`).
       branching_ratio: {}
       lifetime: {}
       gamma_energy: {}
