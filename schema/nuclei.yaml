@@ -1,0 +1,660 @@
+id: https://example.org/nuclear_calculation_schema
+name: nuclear_calculation
+description: >
+  LinkML schema for nuclear-physics calculation data, including interactions,
+  calculation runs, nuclei, states, transitions, and HPC telemetry.
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  ex: https://example.org/
+default_prefix: ex
+default_range: string
+
+imports:
+  - linkml:types
+
+types:
+  uuid:
+    base: string
+    uri: xsd:string
+    pattern: "^[0-9a-fA-F-]{36}$"
+  float:
+    base: double
+    uri: xsd:double
+  integer:
+    base: integer
+    uri: xsd:integer
+  boolean:
+    base: boolean
+    uri: xsd:boolean
+  datetime:
+    base: datetime
+    uri: xsd:dateTime
+
+enums:
+  SchedulerEnum:
+    permissible_values:
+      slurm: {}
+      pbs: {}
+      lsf: {}
+      other: {}
+  MetricTypeEnum:
+    permissible_values:
+      power: {}
+      gpu_power: {}
+      cpu_utilization: {}
+      memory_usage: {}
+      other: {}
+  ManyBodyMethodEnum:
+    permissible_values:
+      IMSRG: {}
+      CC: {}
+      NCSM: {}
+      EDF: {}
+      SCGF: {}
+      GFMC: {}
+      other: {}
+  EvolutionSchemeEnum:
+    permissible_values:
+      none: {}
+      bare: {}
+      SRG: {}
+      Vlowk: {}
+  ThreeBodyTruncationSchemeEnum:
+    permissible_values:
+      none: {}
+      E3max: {}
+      other: {}
+  RunStatusEnum:
+    permissible_values:
+      starting: {}
+      running: {}
+      completed: {}
+      failed: {}
+  InteractionStatusEnum:
+    permissible_values:
+      defined: {}
+      inferred: {}
+      placeholder: {}
+
+  BulkObservableEnum:
+    description: Standard nucleus-level bulk observables supported by the schema.
+    permissible_values:
+      binding_energy:
+        description: Final binding energy for this (run, nucleus).
+      rms_radius: {}
+      charge_radius: {}
+      point_proton_radius: {}
+      quadrupole_moment: {}
+      two_neutron_separation_energy: {}
+      two_proton_separation_energy: {}
+
+  TransitionObservableEnum:
+    description: Standard transition-level observables supported by the schema.
+    permissible_values:
+      B_value:
+        description: Reduced transition probability B(EL) or B(ML).
+      reduced_matrix_element:
+        description: Reduced matrix element (e.g. `|<Jf||O_L||Ji>|`).
+      branching_ratio: {}
+      lifetime: {}
+      gamma_energy: {}
+
+########################################
+# Helper / value classes
+########################################
+
+classes:
+
+  Basis:
+    description: >
+      Description of the single-particle basis / model space used in a run.
+    attributes:
+      type:
+        description: Basis type (e.g., HO, HF-canonical, WS, lattice).
+      Nmax:
+        range: integer
+        required: false
+      hw:
+        range: float
+        required: false
+        description: Harmonic-oscillator frequency in MeV, if applicable.
+      eMax:
+        range: integer
+        required: false
+      notes:
+        range: string
+        required: false
+
+  ScalarWithUnit:
+    description: Simple scalar quantity with a unit and optional description.
+    attributes:
+      value:
+        range: float
+        required: true
+      unit:
+        range: string
+        required: true
+      description:
+        range: string
+        required: false
+
+  MethodParameterEntry:
+    description: One method/config parameter (name + value [+ unit/description]).
+    attributes:
+      name:
+        range: string
+        required: true
+      value:
+        required: true
+        any_of:
+          - range: string
+          - range: integer
+          - range: float
+          - range: boolean
+      unit:
+        range: string
+        required: false
+      description:
+        range: string
+        required: false
+
+  MethodConfig:
+    description: >
+      Extensible method- and code-specific configuration as a list of parameter entries.
+    attributes:
+      parameters:
+        range: MethodParameterEntry
+        multivalued: true
+        inlined: true
+        required: false
+
+  MethodObservableEntry:
+    description: >
+      One method- or code-specific observable or intermediate quantity,
+      identified by name.
+    attributes:
+      name:
+        range: string
+        required: true
+      value:
+        range: ScalarWithUnit
+        required: true
+        inlined: true
+
+  MethodObservables:
+    description: >
+      List of method- or code-specific observables and intermediate quantities.
+    attributes:
+      entries:
+        range: MethodObservableEntry
+        multivalued: true
+        inlined: true
+        required: false
+
+  InteractionEvolution:
+    description: >
+      Optional description of how the interaction has been evolved (e.g., SRG).
+    attributes:
+      scheme:
+        range: EvolutionSchemeEnum
+        required: true
+        description: Evolution scheme (none, bare, SRG, Vlowk).
+      lambda_:
+        alias: lambda
+        range: float
+        required: false
+        description: SRG flow parameter lambda (e.g., in fm^-1), if applicable.
+      generator:
+        range: string
+        required: false
+        description: SRG generator name (e.g., Wegner, White).
+
+  ThreeBodyTruncation:
+    description: Description of three-body truncation settings.
+    attributes:
+      scheme:
+        range: ThreeBodyTruncationSchemeEnum
+        required: true
+      E3max:
+        range: integer
+        required: false
+        description: >
+          Maximum total single-particle energy quantum number in 3N matrix elements.
+      notes:
+        range: string
+        required: false
+
+  InteractionRef:
+    description: Reference to an interaction by label and optional ID.
+    attributes:
+      interaction_id:
+        range: uuid
+        required: false
+      interaction_label:
+        range: string
+        required: true
+
+  StandardBulkObservable:
+    description: >
+      One standard nucleus-level bulk observable. The kind is restricted
+      to BulkObservableEnum. The value carries the numeric result and unit.
+    attributes:
+      kind:
+        range: BulkObservableEnum
+        required: true
+      value:
+        range: ScalarWithUnit
+        required: true
+        inlined: true
+
+  OtherBulkObservableEntry:
+    description: >
+      One non-standard or user-defined nucleus-level observable.
+    attributes:
+      name:
+        range: string
+        required: true
+      value:
+        range: ScalarWithUnit
+        required: true
+        inlined: true
+
+  StandardTransitionObservable:
+    description: >
+      One standard transition-level observable. The kind is restricted to
+      TransitionObservableEnum. The value is typically a ScalarWithUnit.
+    attributes:
+      kind:
+        range: TransitionObservableEnum
+        required: true
+      value:
+        range: ScalarWithUnit
+        required: true
+        inlined: true
+
+  OtherTransitionObservableEntry:
+    description: >
+      One non-standard or user-defined transition-level observable.
+    attributes:
+      name:
+        range: string
+        required: true
+      value:
+        range: ScalarWithUnit
+        required: true
+        inlined: true
+
+  MetadataEntry:
+    description: Simple key/value pair for generic metadata.
+    attributes:
+      key:
+        range: string
+        required: true
+      value:
+        range: string
+        required: true
+
+########################################
+# Main domain classes
+########################################
+
+  Interaction:
+    description: >
+      Catalog entry describing a Hamiltonian / interaction (base interaction,
+      χEFT family, evolution, three-body truncation, etc.). May be created
+      before or after runs that reference its label.
+    attributes:
+      id:
+        identifier: true
+        range: uuid
+        required: true
+      label:
+        range: string
+        required: true
+        description: Stable, human-readable label (e.g. "EMN_1.8_2.0_lambda2.0").
+      theory_family:
+        range: string
+        required: false
+        description: High-level theory family (e.g., chiEFT, phenomenological, EDF).
+      base_interaction:
+        range: string
+        required: false
+        description: Underlying interaction label (e.g., "EMN 1.8/2.0").
+      chiral_order:
+        range: string
+        required: false
+        description: Chiral EFT order (e.g., "N2LO", "N3LO").
+      regulator_scale_NN:
+        range: float
+        required: false
+        description: Regulator scale for NN part.
+      regulator_scale_3N:
+        range: float
+        required: false
+      evolution:
+        range: InteractionEvolution
+        required: false
+        inlined: true
+      three_body_truncation:
+        range: ThreeBodyTruncation
+        required: false
+        inlined: true
+      status:
+        range: InteractionStatusEnum
+        required: false
+        description: Status of this interaction record.
+      default_basis:
+        range: Basis
+        required: false
+        inlined: true
+        description: Optional default basis/model-space for this interaction.
+      method_config:
+        range: MethodConfig
+        required: false
+        inlined: true
+
+  JobExecution:
+    description: One scheduler job execution (e.g., one Slurm job or array element).
+    attributes:
+      id:
+        identifier: true
+        range: uuid
+        required: true
+      scheduler:
+        range: SchedulerEnum
+        required: true
+      scheduler_job_id:
+        range: string
+        required: true
+      scheduler_array_task_id:
+        range: string
+        required: false
+      machine_name:
+        range: string
+        required: false
+      label:
+        range: string
+        required: false
+        description: Optional label for this job (e.g., campaign name).
+      created_at:
+        range: datetime
+        required: true
+      metadata:
+        range: MetadataEntry
+        multivalued: true
+        inlined: true
+        required: false
+
+  CalculationRun:
+    description: >
+      One physics calculation run/task, typically corresponding to one
+      configuration (interaction, basis, method) within a job execution.
+    attributes:
+      id:
+        identifier: true
+        range: uuid
+        required: true
+        description: Unique run identifier.
+      job_execution:
+        range: JobExecution
+        required: true
+        inlined: false
+        description: Reference to the parent job execution.
+      label:
+        range: string
+        required: true
+        description: Short label from config (e.g., "O16_Nmax8_hw16").
+      interaction_ref:
+        range: InteractionRef
+        required: true
+        inlined: true
+      many_body_method:
+        range: ManyBodyMethodEnum
+        required: true
+      method_truncation_level:
+        range: string
+        required: false
+        description: Method truncation label (e.g., "CCSD", "IM-SRG(2)").
+      basis:
+        range: Basis
+        required: true
+        inlined: true
+      method_config:
+        range: MethodConfig
+        required: false
+        inlined: true
+      status:
+        range: RunStatusEnum
+        required: true
+      created_at:
+        range: datetime
+        required: true
+      updated_at:
+        range: datetime
+        required: false
+
+  NucleusObservables:
+    description: >
+      Nucleus-level observables for a given run and nucleus.
+      Standard observables are listed in BulkObservableEnum.
+      In particular, kind == binding_energy is reserved for the final,
+      best estimate of the binding energy for this (run, nucleus).
+    attributes:
+      standard_bulk_observables:
+        range: StandardBulkObservable
+        multivalued: true
+        inlined: true
+        required: false
+      other_bulk_observables:
+        range: OtherBulkObservableEntry
+        multivalued: true
+        inlined: true
+        required: false
+      method_observables:
+        range: MethodObservables
+        required: false
+        inlined: true
+
+  Nucleus:
+    description: One nucleus in a given run.
+    attributes:
+      id:
+        identifier: true
+        range: string
+        required: true
+        description: Nucleus identifier within the dataset (e.g., "O16_run1").
+      run:
+        range: CalculationRun
+        required: true
+        inlined: false
+        description: Reference to the CalculationRun in which this nucleus was computed.
+      Z:
+        range: integer
+        required: true
+      N:
+        range: integer
+        required: true
+      A:
+        range: integer
+        required: true
+      element_symbol:
+        range: string
+        required: false
+      observables:
+        range: NucleusObservables
+        required: false
+        inlined: true
+
+  State:
+    description: One many-body state for a given nucleus and run (ground or excited).
+    attributes:
+      id:
+        identifier: true
+        range: string
+        required: true
+        description: State identifier within the dataset (e.g., "O16_gs_run1").
+      nucleus:
+        range: Nucleus
+        required: true
+        inlined: false
+        description: Reference to the parent nucleus.
+      state_index:
+        range: integer
+        required: true
+        description: Integer index used in the code for this state.
+      J:
+        range: float
+        required: true
+        description: Total angular momentum J.
+      parity:
+        range: integer
+        required: true
+        description: Parity (+1 or -1).
+      energy:
+        range: ScalarWithUnit
+        required: true
+        inlined: true
+      band_label:
+        range: string
+        required: false
+      config_label:
+        range: string
+        required: false
+      is_yrast:
+        range: boolean
+        required: false
+      method_observables:
+        range: MethodObservables
+        required: false
+        inlined: true
+
+  Transition:
+    description: Electromagnetic or other transition between two states.
+    attributes:
+      id:
+        identifier: true
+        range: string
+        required: true
+        description: Transition identifier within the dataset.
+      nucleus:
+        range: Nucleus
+        required: true
+        inlined: false
+        description: Reference to the nucleus where this transition occurs.
+      from_state:
+        range: State
+        required: true
+        inlined: false
+      to_state:
+        range: State
+        required: true
+        inlined: false
+      operator_type:
+        range: string
+        required: true
+        description: Transition operator type (e.g., "E2", "M1", "E1").
+      multipolarity_L:
+        range: integer
+        required: true
+
+      standard_transition_observables:
+        range: StandardTransitionObservable
+        multivalued: true
+        inlined: true
+        required: false
+      other_transition_observables:
+        range: OtherTransitionObservableEntry
+        multivalued: true
+        inlined: true
+        required: false
+
+      method_observables:
+        range: MethodObservables
+        required: false
+        inlined: true
+
+  TelemetrySample:
+    description: >
+      One HPC telemetry sample (e.g., power) for a job, optionally tied to
+      a specific run.
+    attributes:
+      id:
+        identifier: true
+        range: uuid
+        required: true
+      job_execution:
+        range: JobExecution
+        required: true
+        inlined: false
+        description: Reference to the job execution.
+      run:
+        range: CalculationRun
+        required: false
+        inlined: false
+        description: Optional reference to the specific run/task, if known.
+      timestamp:
+        range: datetime
+        required: true
+      node_id:
+        range: string
+        required: true
+      metric_type:
+        range: MetricTypeEnum
+        required: true
+      value:
+        range: float
+        required: true
+      unit:
+        range: string
+        required: true
+      metadata:
+        range: MetadataEntry
+        multivalued: true
+        inlined: true
+        required: false
+
+########################################
+# Optional top-level container
+########################################
+
+  Dataset:
+    description: >
+      Convenience container for bundling many interactions, runs, nuclei,
+      states, transitions, and telemetry samples in a single document.
+    attributes:
+      interactions:
+        range: Interaction
+        multivalued: true
+        inlined: true
+        required: false
+      job_executions:
+        range: JobExecution
+        multivalued: true
+        inlined: true
+        required: false
+      runs:
+        range: CalculationRun
+        multivalued: true
+        inlined: true
+        required: false
+      nuclei:
+        range: Nucleus
+        multivalued: true
+        inlined: true
+        required: false
+      states:
+        range: State
+        multivalued: true
+        inlined: true
+        required: false
+      transitions:
+        range: Transition
+        multivalued: true
+        inlined: true
+        required: false
+      telemetry_samples:
+        range: TelemetrySample
+        multivalued: true
+        inlined: true
+        required: false
