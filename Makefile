@@ -9,9 +9,8 @@ SITE_DIR ?= site
 docs: clean-docs
 	mkdir -p $(DOCS_DIR)
 	gen-doc \
+		--template-directory md-templates \
 		--hierarchical-class-view \
-		--include-top-level-diagram \
-		--diagram-type mermaid_class_diagram \
 		-d $(DOCS_DIR) $(SCHEMA)
 
 clean-docs:

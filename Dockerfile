@@ -12,8 +12,6 @@ RUN pip install --no-cache-dir mkdocs linkml[mkdocs] mkdocs-material pymdown-ext
 RUN gen-doc \
     --template-directory md-templates \
     --hierarchical-class-view \
-    --include-top-level-diagram \
-    --diagram-type mermaid_class_diagram \
     -d docs \
     schema/nuclei.yaml
 RUN python3 -m mkdocs build
