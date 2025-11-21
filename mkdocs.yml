@@ -24,9 +24,6 @@ theme:
 
 nav:
   - Home: index.md
-  - Classes: classes.md
-  - Slots: slots.md
-  - Types: types.md
   # If you have specific modules or pages, add them like this:
   # - My Module:
   #   - Module Intro: my_module/index.md
