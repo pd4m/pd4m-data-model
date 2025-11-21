@@ -4,13 +4,11 @@ FROM linkml/linkml AS builder
 
 WORKDIR /app
 
-# Copy only what we need to build docs
 COPY schema/ schema/
 COPY md-templates/ md-templates/
 COPY mkdocs.yml .
 
-# Build docs into /app/docs
-RUN pip install --no-cache-dir mkdocs linkml[mkdocs] mkdocs-material pymdown-extensions
+RUN pip install --no-cache-dir mkdocs linkml[mkdocs] mkdocs-material pymdown-extensions mkdocs-mermaid2-plugin
 RUN gen-doc \
     --template-directory md-templates \
     --hierarchical-class-view \
